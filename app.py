@@ -97,6 +97,9 @@ by_label = dict(zip(labels, handles))
 ax.legend(by_label.values(), by_label.keys())
 st.pyplot(fig)
 if add_obstacle:
+    st.info(f"📏 Distance from Car to Obstacle: `{distance_to_obstacle:.2f} meters`")
+
+if add_obstacle:
     if detected_by:
         st.success(f"🚨 Obstacle Detected by: {', '.join(detected_by)}")
     else:
