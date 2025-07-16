@@ -1,119 +1,119 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 import math
 
-st.set_page_config(page_title="ADAS Road Layout Simulator", layout="wide")
-st.title("🚗 ADAS Sensor Coverage on 2-Lane Road")
+st.set_page_config(page_title="ADAS Sensor Coverage", layout="wide")
+st.title("🚗 ADAS Sensor Coverage with Moving Obstacles")
 
-# === Sidebar Controls ===
-st.sidebar.header("Sensors")
-camera_360_enabled = st.sidebar.checkbox("Enable 360° Camera", True)
-lidar_enabled = st.sidebar.checkbox("Enable LiDAR (360°)", True)
-lidar_range = st.sidebar.slider("LiDAR Range (m)", 5, 50, 20)
+# --- Sensor Settings ---
+st.sidebar.header("Sensor Settings")
+camera_enabled = st.sidebar.checkbox("Enable Camera", True)
+radar_enabled = st.sidebar.checkbox("Enable Radar", True)
+lidar_enabled = st.sidebar.checkbox("Enable LiDAR", True)
 
-st.sidebar.subheader("Select Obstacles")
+camera_fov = st.sidebar.slider("Camera FOV (°)", 0, 180, 120)
+radar_fov = st.sidebar.slider("Radar FOV (°)", 0, 180, 60)
+lidar_range = st.sidebar.slider("LiDAR Range (m)", 0, 50, 20)
 
-# Define obstacles on road & footpath
-predefined_obstacles = [
-    {"x": -4, "y": 8, "type": "Vehicle"},     # left lane
-    {"x": 4, "y": 14, "type": "Vehicle"},      # right lane
-    {"x": 4, "y": -13, "type": "Vehicle"},     # right lane
-    {"x": -12, "y": 11, "type": "Pedestrian"}, # left footpath
-    {"x": 12, "y": 11, "type": "Pedestrian"},  # right footpath
-    {"x": 10, "y": 21, "type": "Object"},      # far object
+# --- Simulation settings ---
+st.sidebar.header("Simulation Settings")
+run_simulation = st.sidebar.checkbox("Run Simulation", value=True)
+speed = st.sidebar.slider("Obstacle Speed (m/frame)", 0.1, 2.0, 0.5, 0.1)
+
+# --- Constants ---
+LANE_WIDTH = 4
+LANE_COUNT = 3
+ROAD_WIDTH = LANE_WIDTH * LANE_COUNT
+ROAD_LEFT = -ROAD_WIDTH / 2
+ROAD_RIGHT = ROAD_WIDTH / 2
+
+# --- Ego Vehicle Position (center lane) ---
+ego_x = 0
+ego_y = 0
+
+# --- Initial Obstacle Positions ---
+obstacles = [
+    {"x": -LANE_WIDTH, "y": 20, "type": "Vehicle"},  # Left lane
+    {"x": LANE_WIDTH, "y": 30, "type": "Vehicle"},   # Right lane
+    {"x": 5, "y": 25, "type": "Pedestrian"},          # Footpath
 ]
 
-# Let user pick what to show
-selected_indices = st.sidebar.multiselect(
-    "Show Obstacles:",
-    options=range(len(predefined_obstacles)),
-    format_func=lambda i: f"{predefined_obstacles[i]['type']} at ({predefined_obstacles[i]['x']}, {predefined_obstacles[i]['y']})"
-)
+placeholder = st.empty()
 
-obstacle_list = [predefined_obstacles[i] for i in selected_indices]
+while run_simulation:
+    fig, ax = plt.subplots(figsize=(6, 10))
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-5, 35)
+    ax.set_aspect('equal')
+    ax.set_title("Top-Down ADAS View")
 
-# === Plot Setup ===
-fig, ax = plt.subplots(figsize=(8, 8))
-ax.set_xlim(-20, 20)
-ax.set_ylim(-25, 25)
-ax.set_aspect('equal')
-ax.set_title("Top-Down ADAS Road View")
+    # --- Draw Road ---
+    ax.axvspan(ROAD_LEFT, ROAD_RIGHT, color='#d3d3d3')  # road background
+    for i in range(1, LANE_COUNT):
+        x = ROAD_LEFT + i * LANE_WIDTH
+        ax.plot([x, x], [-5, 35], color='white', linestyle='--', linewidth=2)
 
-# === Road Background ===
-# Road width = 16m (two 4m lanes + margins), centered at x=0
-road = plt.Rectangle((-8, -25), 16, 50, color='lightgray', zorder=0)
-ax.add_patch(road)
+    # --- Draw Ego Car ---
+    ego_car = plt.Rectangle((ego_x - 1, ego_y - 2), 2, 4, color='black')
+    ax.add_patch(ego_car)
 
-# Footpaths (green zones on sides)
-footpath_left = plt.Rectangle((-20, -25), 12, 50, color='#ddf4d2', zorder=0)
-footpath_right = plt.Rectangle((8, -25), 12, 50, color='#ddf4d2', zorder=0)
-ax.add_patch(footpath_left)
-ax.add_patch(footpath_right)
+    # --- Sensor Coverage ---
+    def draw_sector(ax, angle_deg, range_m, color, label):
+        angle_rad = np.deg2rad(np.linspace(-angle_deg/2, angle_deg/2, 100))
+        x = range_m * np.cos(angle_rad)
+        y = range_m * np.sin(angle_rad)
+        ax.fill_betweenx(y, 0, x, color=color, alpha=0.3, label=label)
 
-# Lane markings (dashed white lines)
-for x in [-4, 0, 4]:
-    ax.plot([x, x], [-25, 25], linestyle='--', color='white', linewidth=2, zorder=1)
+    if camera_enabled:
+        draw_sector(ax, camera_fov, 25, 'blue', 'Camera')
+    if radar_enabled:
+        draw_sector(ax, radar_fov, 15, 'red', 'Radar')
+    if lidar_enabled:
+        circle = plt.Circle((ego_x, ego_y), lidar_range, color='green', alpha=0.2, label='LiDAR')
+        ax.add_patch(circle)
 
-# === Car at center ===
-car = plt.Rectangle((-1, -2), 2, 4, color='black', zorder=5)
-ax.add_patch(car)
+    # --- Obstacle Movement and Detection ---
+    detected_summary = []
+    for obs in obstacles:
+        obs["y"] -= speed
 
-# === 360° Camera View ===
-if camera_360_enabled:
-    camera_circle = plt.Circle((0, 0), 10, color='skyblue', alpha=0.2, label='360° Camera', zorder=2)
-    ax.add_patch(camera_circle)
+        x = obs["x"]
+        y = obs["y"]
+        label = obs["type"]
 
-# === LiDAR View ===
-if lidar_enabled:
-    lidar_circle = plt.Circle((0, 0), lidar_range, color='green', alpha=0.2, label='LiDAR (360°)', zorder=2)
-    ax.add_patch(lidar_circle)
+        if label == "Pedestrian":
+            patch = plt.Circle((x, y), 0.4, color='orange')
+        else:
+            patch = plt.Rectangle((x - 1, y - 2), 2, 4, color='purple')
+        ax.add_patch(patch)
 
-# === Detection Logic ===
-detected_summary = []
+        distance = math.sqrt((x - ego_x)**2 + (y - ego_y)**2)
+        ax.text(x + 0.5, y + 0.5, f"{distance:.1f} m", fontsize=9,
+                bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
 
-for obs in obstacle_list:
-    x = obs["x"]
-    y = obs["y"]
-    label = obs["type"]
+        detected_by = []
+        angle = math.degrees(math.atan2(y - ego_y, x - ego_x))
+        if camera_enabled and distance <= 25 and -camera_fov/2 <= angle <= camera_fov/2:
+            detected_by.append("Camera")
+        if radar_enabled and distance <= 15 and -radar_fov/2 <= angle <= radar_fov/2:
+            detected_by.append("Radar")
+        if lidar_enabled and distance <= lidar_range:
+            detected_by.append("LiDAR")
 
-    # Draw obstacle
-    if label == "Pedestrian":
-        patch = plt.Circle((x, y), 0.5, color='orange', label='Pedestrian', zorder=4)
-    elif label == "Vehicle":
-        patch = plt.Rectangle((x - 1, y - 2), 2, 4, color='purple', label='Vehicle', zorder=4)
-    else:
-        patch = plt.Rectangle((x - 0.5, y - 0.5), 1, 1, color='gray', label='Object', zorder=4)
-    ax.add_patch(patch)
+        detected_summary.append({
+            "Obstacle": f"{label} at ({x:.1f}, {y:.1f})",
+            "Distance": f"{distance:.1f} m",
+            "Detected By": ", ".join(detected_by) if detected_by else "None"
+        })
 
-    # Distance
-    distance = np.sqrt(x**2 + y**2)
-    ax.text(x + 0.5, y + 0.5, f"{distance:.1f} m", fontsize=8,
-            bbox=dict(facecolor='white', alpha=0.6), color='black', zorder=6)
+    # --- Legend and Display ---
+    ax.legend(loc='upper right')
+    placeholder.pyplot(fig)
 
-    # Detection
-    detected_by = []
-    if camera_360_enabled:
-        detected_by.append("360° Camera")
-    if lidar_enabled and distance <= lidar_range:
-        detected_by.append("LiDAR")
+    st.subheader("📊 Obstacle Detection Summary")
+    for d in detected_summary:
+        st.write(f"🔹 {d['Obstacle']} → {d['Distance']} → Detected by: {d['Detected By']}")
 
-    detected_summary.append({
-        "Obstacle": f"{label} at ({x}, {y})",
-        "Detected By": ", ".join(detected_by) if detected_by else "None",
-        "Distance": f"{distance:.1f} m"
-    })
-
-# === Legend & Output ===
-handles, labels = ax.get_legend_handles_labels()
-by_label = dict(zip(labels, handles))  # remove duplicates
-ax.legend(by_label.values(), by_label.keys(), loc='lower right')
-
-st.pyplot(fig)
-
-if detected_summary:
-    st.subheader("📊 Detection Summary")
-    for entry in detected_summary:
-        st.write(f"🔹 **{entry['Obstacle']}**")
-        st.write(f" 📏 Distance: `{entry['Distance']}`")
-        st.write(f" 🛰️ Detected by: `{entry['Detected By']}`")
+    time.sleep(1)
