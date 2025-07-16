@@ -108,6 +108,12 @@ by_label = dict(zip(labels, handles))
 ax.legend(by_label.values(), by_label.keys())
 
 st.pyplot(fig)
+if obstacle_list:
+    st.subheader("📊 Obstacle Detection Summary")
+    for entry in detected_summary:
+        st.write(f"🔹 {entry['Obstacle']}")
+        st.write(f"  📏 Distance: {entry['Distance (m)']}")
+        st.write(f"  🛰️ Detected by: {entry['Detected By']}")
 
 if add_obstacle:
     st.info(f"📏 Distance from Car to Obstacle: `{distance_to_obstacle:.2f} meters`")
