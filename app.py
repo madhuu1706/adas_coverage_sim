@@ -10,11 +10,11 @@ st.title("🚗 ADAS Sensor Coverage with Moving Obstacles")
 # --- Sensor Settings ---
 st.sidebar.header("Sensor Settings")
 camera_enabled = st.sidebar.checkbox("Enable 360° Camera", True)
-radar_enabled = st.sidebar.checkbox("Enable Radar (Frontal)", True)
+radar_enabled = st.sidebar.checkbox("Enable Radar (360°)", True)
 lidar_enabled = st.sidebar.checkbox("Enable LiDAR (360°)", True)
 
 camera_range = st.sidebar.slider("Camera Range (m)", 0, 50, 25)
-radar_fov = st.sidebar.slider("Radar FOV (°)", 0, 180, 60)
+radar_range = st.sidebar.slider("Radar Range (m)", 0, 50, 15)
 lidar_range = st.sidebar.slider("LiDAR Range (m)", 0, 50, 20)
 
 # --- Simulation settings ---
@@ -64,12 +64,8 @@ while run_simulation:
         circle = plt.Circle((ego_x, ego_y), camera_range, color='blue', alpha=0.1, label='360° Camera')
         ax.add_patch(circle)
     if radar_enabled:
-        def draw_sector(ax, angle_deg, range_m, color, label):
-            angle_rad = np.deg2rad(np.linspace(-angle_deg/2, angle_deg/2, 100))
-            x = range_m * np.cos(angle_rad)
-            y = range_m * np.sin(angle_rad)
-            ax.fill_betweenx(y, 0, x, color=color, alpha=0.3, label=label)
-        draw_sector(ax, radar_fov, 15, 'red', 'Radar')
+        circle = plt.Circle((ego_x, ego_y), radar_range, color='red', alpha=0.1, label='360° Radar')
+        ax.add_patch(circle)
     if lidar_enabled:
         circle = plt.Circle((ego_x, ego_y), lidar_range, color='green', alpha=0.2, label='LiDAR (360°)')
         ax.add_patch(circle)
@@ -94,10 +90,9 @@ while run_simulation:
                 bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
 
         detected_by = []
-        angle = math.degrees(math.atan2(y - ego_y, x - ego_x))
         if camera_enabled and distance <= camera_range:
             detected_by.append("Camera")
-        if radar_enabled and distance <= 15 and -radar_fov/2 <= angle <= radar_fov/2:
+        if radar_enabled and distance <= radar_range:
             detected_by.append("Radar")
         if lidar_enabled and distance <= lidar_range:
             detected_by.append("LiDAR")
