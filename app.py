@@ -91,4 +91,29 @@ while run_simulation:
 
         distance = math.sqrt((x - ego_x)**2 + (y - ego_y)**2)
         ax.text(x + 0.5, y + 0.5, f"{distance:.1f} m", fontsize=9,
-        
+                bbox=dict(facecolor='white', edgecolor='black', boxstyle='round'))
+
+        detected_by = []
+        angle = math.degrees(math.atan2(y - ego_y, x - ego_x))
+        if camera_enabled and distance <= camera_range:
+            detected_by.append("Camera")
+        if radar_enabled and distance <= 15 and -radar_fov/2 <= angle <= radar_fov/2:
+            detected_by.append("Radar")
+        if lidar_enabled and distance <= lidar_range:
+            detected_by.append("LiDAR")
+
+        detected_summary.append({
+            "Obstacle": f"{label} at ({x:.1f}, {y:.1f})",
+            "Distance": f"{distance:.1f} m",
+            "Detected By": ", ".join(detected_by) if detected_by else "None"
+        })
+
+    # --- Legend and Display ---
+    ax.legend(loc='upper right')
+    placeholder.pyplot(fig)
+
+    st.subheader("📊 Obstacle Detection Summary")
+    for d in detected_summary:
+        st.write(f"🔹 {d['Obstacle']} → {d['Distance']} → Detected by: {d['Detected By']}")
+
+    time.sleep(1)
