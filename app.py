@@ -62,7 +62,38 @@ if add_obstacle:
         obstacle = plt.Rectangle((obstacle_x - 0.5, obstacle_y - 0.5), 1, 1, color='gray', label='Object')
     
     ax.add_patch(obstacle)
+import math
+
+def is_in_fov(x, y, fov, max_range):
+    # Calculate distance and angle from car (0,0)
+    distance = math.sqrt(x**2 + y**2)
+    angle = math.degrees(math.atan2(y, x))  # Angle from forward (X-axis)
+
+    if distance > max_range:
+        return False
+
+    return -fov / 2 <= angle <= fov / 2
+
+# Detection flags
+detected_by = []
+
+if camera_enabled and is_in_fov(obstacle_x, obstacle_y, camera_fov, 25):
+    detected_by.append("Camera")
+
+if radar_enabled and is_in_fov(obstacle_x, obstacle_y, radar_fov, 15):
+    detected_by.append("Radar")
+
+# LiDAR is 360°, so always detects within range
+distance_to_obstacle = np.sqrt(obstacle_x**2 + obstacle_y**2)
+if lidar_enabled and distance_to_obstacle <= lidar_range:
+    detected_by.append("LiDAR")
+
 handles, labels = ax.get_legend_handles_labels()
 by_label = dict(zip(labels, handles))
 ax.legend(by_label.values(), by_label.keys())
 st.pyplot(fig)
+if add_obstacle:
+    if detected_by:
+        st.success(f"🚨 Obstacle Detected by: {', '.join(detected_by)}")
+    else:
+        st.warning("⚠️ Obstacle NOT detected by any active sensor.")
