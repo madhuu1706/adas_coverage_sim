@@ -64,7 +64,7 @@ while run_simulation:
         circle = plt.Circle((ego_x, ego_y), camera_range, color='blue', alpha=0.1, label='360° Camera')
         ax.add_patch(circle)
     if radar_enabled:
-        circle = plt.Circle((ego_x, ego_y), radar_range, color='red', alpha=0.1, label='360° Radar')
+        circle = plt.Circle((ego_x, ego_y), radar_range, fill=False, linestyle='--', linewidth=2, edgecolor='red', label='360° Radar')
         ax.add_patch(circle)
     if lidar_enabled:
         circle = plt.Circle((ego_x, ego_y), lidar_range, color='green', alpha=0.2, label='LiDAR (360°)')
