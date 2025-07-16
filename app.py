@@ -16,11 +16,26 @@ camera_fov = st.sidebar.slider("Camera FOV (°)", 0, 180, 120)
 radar_fov = st.sidebar.slider("Radar FOV (°)", 0, 180, 60)
 lidar_range = st.sidebar.slider("LiDAR Range (m)", 0, 50, 20)
 
-st.sidebar.header("Obstacle Settings")
-add_obstacle = st.sidebar.checkbox("Add Obstacle", True)
-obstacle_x = st.sidebar.slider("Obstacle X Position", -30, 30, 10)
-obstacle_y = st.sidebar.slider("Obstacle Y Position", -30, 30, 5)
-obstacle_type = st.sidebar.selectbox("Obstacle Type", ["Pedestrian", "Vehicle", "Object"])
+st.sidebar.subheader("Multiple Obstacles")
+
+# Example predefined obstacles to pick from
+predefined_obstacles = [
+    {"x": 10, "y": 5, "type": "Pedestrian"},
+    {"x": -8, "y": 3, "type": "Vehicle"},
+    {"x": 5, "y": -10, "type": "Object"},
+    {"x": 15, "y": 15, "type": "Pedestrian"},
+    {"x": -12, "y": -7, "type": "Vehicle"},
+]
+
+# Allow user to pick multiple from a list
+selected_indices = st.sidebar.multiselect(
+    "Select Obstacles to Display:",
+    options=range(len(predefined_obstacles)),
+    format_func=lambda i: f"{predefined_obstacles[i]['type']} at ({predefined_obstacles[i]['x']}, {predefined_obstacles[i]['y']})"
+)
+
+obstacle_list = [predefined_obstacles[i] for i in selected_indices]
+
 
 # --- Plot setup ---
 fig, ax = plt.subplots(figsize=(8, 8))
