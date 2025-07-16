@@ -8,10 +8,16 @@ st.title("🚗 ADAS Sensor Coverage Simulator")
 
 # Sidebar controls
 st.sidebar.header("Sensor Settings")
+st.sidebar.header("Obstacle Settings")
 
 camera_enabled = st.sidebar.checkbox("Enable Camera", True)
 radar_enabled = st.sidebar.checkbox("Enable Radar", True)
 lidar_enabled = st.sidebar.checkbox("Enable LiDAR", True)
+#Obstacle Controls to Sidebar
+add_obstacle = st.sidebar.checkbox("Add Obstacle", True)
+obstacle_x = st.sidebar.slider("Obstacle X Position", -30, 30, 10)
+obstacle_y = st.sidebar.slider("Obstacle Y Position", -30, 30, 5)
+obstacle_type = st.sidebar.selectbox("Obstacle Type", ["Pedestrian", "Vehicle", "Object"])
 
 camera_fov = st.sidebar.slider("Camera FOV (°)", 0, 180, 120)
 radar_fov = st.sidebar.slider("Radar FOV (°)", 0, 180, 60)
@@ -44,6 +50,19 @@ if lidar_enabled:
     x = lidar_range * np.cos(theta)
     y = lidar_range * np.sin(theta)
     ax.plot(x, y, color='green', alpha=0.3, label='LiDAR (360°)')
-
-ax.legend()
+if add_obstacle:
+    if obstacle_type == "Pedestrian":
+        # Circle for pedestrian
+        obstacle = plt.Circle((obstacle_x, obstacle_y), 0.5, color='orange', label='Pedestrian')
+    elif obstacle_type == "Vehicle":
+        # Rectangle for vehicle
+        obstacle = plt.Rectangle((obstacle_x - 1, obstacle_y - 2), 2, 4, color='purple', label='Vehicle')
+    else:
+        # Square for object
+        obstacle = plt.Rectangle((obstacle_x - 0.5, obstacle_y - 0.5), 1, 1, color='gray', label='Object')
+    
+    ax.add_patch(obstacle)
+handles, labels = ax.get_legend_handles_labels()
+by_label = dict(zip(labels, handles))
+ax.legend(by_label.values(), by_label.keys())
 st.pyplot(fig)
