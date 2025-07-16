@@ -32,6 +32,10 @@ ax.set_title("Top-Down View")
 # Draw the car at the origin
 car = plt.Rectangle((-1, -2), 2, 4, color='black')
 ax.add_patch(car)
+# Display distance as a text label
+ax.text(obstacle_x + 1, obstacle_y + 1, 
+        f"{distance_to_obstacle:.2f} m", 
+        fontsize=10, color='black', bbox=dict(facecolor='white', alpha=0.5))
 
 def draw_sector(ax, angle_deg, range_m, color, label):
     angle_rad = np.deg2rad(np.linspace(-angle_deg/2, angle_deg/2, 100))
