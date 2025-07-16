@@ -97,10 +97,18 @@ by_label = dict(zip(labels, handles))
 ax.legend(by_label.values(), by_label.keys())
 st.pyplot(fig)
 if add_obstacle:
-    st.info(f"📏 Distance from Car to Obstacle: `{distance_to_obstacle:.2f} meters`")
-
-if add_obstacle:
-    if detected_by:
-        st.success(f"🚨 Obstacle Detected by: {', '.join(detected_by)}")
+    # 1. Draw the obstacle (your existing code)
+    if obstacle_type == "Pedestrian":
+        obstacle = plt.Circle((obstacle_x, obstacle_y), 0.5, color='orange', label='Pedestrian')
+    elif obstacle_type == "Vehicle":
+        obstacle = plt.Rectangle((obstacle_x - 1, obstacle_y - 2), 2, 4, color='purple', label='Vehicle')
     else:
-        st.warning("⚠️ Obstacle NOT detected by any active sensor.")
+        obstacle = plt.Rectangle((obstacle_x - 0.5, obstacle_y - 0.5), 1, 1, color='gray', label='Object')
+    
+    ax.add_patch(obstacle)
+
+    # ✅ 2. Calculate distance
+    distance_to_obstacle = np.sqrt(obstacle_x**2 + obstacle_y**2)
+
+    # ✅ 3. Display on the plot
+    ax.text(obstacle_x + 1, obst_
