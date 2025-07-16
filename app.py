@@ -36,7 +36,6 @@ selected_indices = st.sidebar.multiselect(
 
 obstacle_list = [predefined_obstacles[i] for i in selected_indices]
 
-
 # --- Plot setup ---
 fig, ax = plt.subplots(figsize=(8, 8))
 ax.set_xlim(-30, 30)
@@ -67,23 +66,6 @@ if lidar_enabled:
     y = lidar_range * np.sin(theta)
     ax.plot(x, y, color='green', alpha=0.3, label='LiDAR (360°)')
 
-# --- Obstacle Drawing + Distance ---
-if add_obstacle:
-    if obstacle_type == "Pedestrian":
-        obstacle = plt.Circle((obstacle_x, obstacle_y), 0.5, color='orange', label='Pedestrian')
-    elif obstacle_type == "Vehicle":
-        obstacle = plt.Rectangle((obstacle_x - 1, obstacle_y - 2), 2, 4, color='purple', label='Vehicle')
-    else:
-        obstacle = plt.Rectangle((obstacle_x - 0.5, obstacle_y - 0.5), 1, 1, color='gray', label='Object')
-
-    ax.add_patch(obstacle)
-
-    # Calculate and show distance
-    distance_to_obstacle = np.sqrt(obstacle_x**2 + obstacle_y**2)
-    ax.text(obstacle_x + 1, obstacle_y + 1, 
-            f"{distance_to_obstacle:.2f} m", 
-            fontsize=10, color='black', bbox=dict(facecolor='white', alpha=0.5))
-
 # --- Detection Logic ---
 def is_in_fov(x, y, fov, max_range):
     distance = math.sqrt(x**2 + y**2)
@@ -92,33 +74,54 @@ def is_in_fov(x, y, fov, max_range):
         return False
     return -fov / 2 <= angle <= fov / 2
 
-detected_by = []
+# --- Obstacle Loop ---
+detected_summary = []
 
-if add_obstacle:
-    if camera_enabled and is_in_fov(obstacle_x, obstacle_y, camera_fov, 25):
+for obs in obstacle_list:
+    x = obs["x"]
+    y = obs["y"]
+    label = obs["type"]
+
+    # Draw obstacle
+    if label == "Pedestrian":
+        patch = plt.Circle((x, y), 0.5, color='orange', label='Pedestrian')
+    elif label == "Vehicle":
+        patch = plt.Rectangle((x - 1, y - 2), 2, 4, color='purple', label='Vehicle')
+    else:
+        patch = plt.Rectangle((x - 0.5, y - 0.5), 1, 1, color='gray', label='Object')
+
+    ax.add_patch(patch)
+
+    # Distance
+    distance = np.sqrt(x**2 + y**2)
+    ax.text(x + 1, y + 1, f"{distance:.2f} m",
+            fontsize=9, color='black', bbox=dict(facecolor='white', alpha=0.5))
+
+    # Detection
+    detected_by = []
+    if camera_enabled and is_in_fov(x, y, camera_fov, 25):
         detected_by.append("Camera")
-    if radar_enabled and is_in_fov(obstacle_x, obstacle_y, radar_fov, 15):
+    if radar_enabled and is_in_fov(x, y, radar_fov, 15):
         detected_by.append("Radar")
-    if lidar_enabled and distance_to_obstacle <= lidar_range:
+    if lidar_enabled and distance <= lidar_range:
         detected_by.append("LiDAR")
 
-# --- Plot and UI Output ---
+    detected_summary.append({
+        "Obstacle": f"{label} at ({x}, {y})",
+        "Detected By": ", ".join(detected_by) if detected_by else "None",
+        "Distance (m)": f"{distance:.2f}"
+    })
+
+# --- Plot and Summary ---
 handles, labels = ax.get_legend_handles_labels()
 by_label = dict(zip(labels, handles))
 ax.legend(by_label.values(), by_label.keys())
 
 st.pyplot(fig)
+
 if obstacle_list:
     st.subheader("📊 Obstacle Detection Summary")
     for entry in detected_summary:
         st.write(f"🔹 {entry['Obstacle']}")
         st.write(f"  📏 Distance: {entry['Distance (m)']}")
         st.write(f"  🛰️ Detected by: {entry['Detected By']}")
-
-if add_obstacle:
-    st.info(f"📏 Distance from Car to Obstacle: `{distance_to_obstacle:.2f} meters`")
-
-    if detected_by:
-        st.success(f"🚨 Obstacle Detected by: {', '.join(detected_by)}")
-    else:
-        st.warning("⚠️ Obstacle NOT detected by any active sensor.")
